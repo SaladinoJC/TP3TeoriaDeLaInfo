@@ -2,6 +2,7 @@ import sys
 import heapq
 import time
 from collections import Counter
+import math
 
 class Node:
     def __init__(self, byte=None, freq=None, left=None, right=None):
@@ -47,8 +48,33 @@ def bits_to_bytes(bits):
 def bytes_to_bits(byte_arr):
     bits = []
     for byte in byte_arr:
-        bits.append(f'{byte:08b}')  # Convertimos el byte a una cadena binaria de 8 bits y lo agregamos a la lista
-    return ''.join(bits)  # Al final, unimos todos los elementos en una sola cadena
+        bits.append(f'{byte:08b}')
+    return ''.join(bits)
+
+def calculate_entropy(frequencies, total_symbols):
+    """Calcula la entropía del conjunto de símbolos"""
+    entropy = 0
+    for freq in frequencies.values():
+        probability = freq / total_symbols
+        entropy -= probability * math.log2(probability)
+    return entropy
+
+def calculate_average_length(huffman_codes, frequencies, total_symbols):
+    """Calcula la longitud media de un código"""
+    avg_length = 0
+    for byte, code in huffman_codes.items():
+        freq = frequencies[byte]
+        avg_length += len(code) * (freq / total_symbols)
+    return avg_length
+
+def calculate_compression_metrics(entropy, avg_length):
+    # Rendimiento (entropía sobre la longitud media, multiplicado por 100)
+    efficiency = (entropy / avg_length) * 100
+
+    # Redundancia
+    redundancy = 100 - efficiency
+
+    return efficiency, redundancy
 
 def compress_file(original, compressed):
     with open(original, 'rb') as f:
@@ -85,7 +111,24 @@ def compress_file(original, compressed):
         byte_data = bits_to_bytes(encoded_data)
         f_out.write(byte_data)
 
+    # Tamaños para métricas
+    total_symbols = len(data)  # Cantidad total de símbolos
+    original_size = total_symbols  # Tamaño original en bytes
+
+    # Calcular la entropía
+    entropy = calculate_entropy(frequencies, total_symbols)
+
+    # Calcular la longitud media del código
+    avg_length = calculate_average_length(huffman_codes, frequencies, total_symbols)
+
+    # Calcular el rendimiento y la redundancia
+    efficiency, redundancy = calculate_compression_metrics(entropy, avg_length)
+
     print(f"Archivo comprimido guardado como {compressed}")
+    print(f"Entropía: {entropy:.4f}")
+    print(f"Longitud media del código: {avg_length:.4f}")
+    print(f"Rendimiento: {efficiency:.4f}%")
+    print(f"Redundancia: {redundancy:.4f}%")
 
 def decompress_file(compressed, original):
     try:
@@ -109,7 +152,6 @@ def decompress_file(compressed, original):
 
             # Leer los bits comprimidos
             byte_data = f_in.read()    
-            # SE TRABA ACA VER
             encoded_data = bytes_to_bits(byte_data)
 
             # Eliminar los bits de relleno
@@ -155,7 +197,7 @@ def main():
         decompress_file(original, compressed)
         end_time = time.time()  # Fin del tiempo de compresión
         elapsed_time = end_time - start_time
-        print(f"Tiempo de decompresión: {elapsed_time:.4f} segundos")
+        print(f"Tiempo de descompresión: {elapsed_time:.4f} segundos")
     else:
         print("Flag inválido. Usa -c para comprimir o -d para descomprimir.")
         sys.exit(1)
