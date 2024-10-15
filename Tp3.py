@@ -45,10 +45,10 @@ def bits_to_bytes(bits):
     return byte_arr
 
 def bytes_to_bits(byte_arr):
-    bits = ""
+    bits = []
     for byte in byte_arr:
-        bits += f'{byte:08b}'
-    return bits
+        bits.append(f'{byte:08b}')  # Convertimos el byte a una cadena binaria de 8 bits y lo agregamos a la lista
+    return ''.join(bits)  # Al final, unimos todos los elementos en una sola cadena
 
 def compress_file(original, compressed):
     with open(original, 'rb') as f:
@@ -108,7 +108,8 @@ def decompress_file(compressed, original):
             padding = f_in.read(1)[0]
 
             # Leer los bits comprimidos
-            byte_data = f_in.read()
+            byte_data = f_in.read()    
+            # SE TRABA ACA VER
             encoded_data = bytes_to_bits(byte_data)
 
             # Eliminar los bits de relleno
