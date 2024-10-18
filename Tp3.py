@@ -130,7 +130,7 @@ def compress_file(original, compressed):
     print(f"Rendimiento: {efficiency:.4f}%")
     print(f"Redundancia: {redundancy:.4f}%")
 
-def decompress_file(compressed, original):
+def decompress_file(original, compressed):
     try:
         # Abrir el archivo comprimido para lectura
         with open(compressed, 'rb') as f_in:
