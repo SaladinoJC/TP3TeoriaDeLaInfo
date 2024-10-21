@@ -102,8 +102,21 @@ def compress_file(original, compressed):
         # Guardar las frecuencias de los bytes
         f_out.write(len(frequencies).to_bytes(2, 'big'))  # Cantidad de bytes distintos
         for byte, freq in frequencies.items():
-            f_out.write(bytes([byte]))  # Byte
-            f_out.write(freq.to_bytes(4, 'big'))  # Frecuencia
+            f_out.write(bytes([byte]))  # Escribimos el byte
+            
+            # Determinar cuántos bytes necesitamos para almacenar la frecuencia
+            if freq <= 255:
+                f_out.write(bytes([1]))  # Longitud de codificación
+                f_out.write(freq.to_bytes(1, 'big'))  # Escribimos la frecuencia en 1 byte
+            elif freq <= 65535:
+                f_out.write(bytes([2]))  # Longitud de codificación
+                f_out.write(freq.to_bytes(2, 'big'))  # Escribimos la frecuencia en 2 bytes
+            elif freq <= 16777215:
+                f_out.write(bytes([3]))  # Longitud de codificación
+                f_out.write(freq.to_bytes(3, 'big'))  # Escribimos la frecuencia en 3 bytes
+            else:
+                f_out.write(bytes([4]))  # Longitud de codificación
+                f_out.write(freq.to_bytes(4, 'big'))  # Escribimos la frecuencia en 4 bytes
 
         # Guardar el número de bits de relleno
         f_out.write(bytes([padding]))
@@ -130,6 +143,8 @@ def compress_file(original, compressed):
     efficiency, redundancy = calculate_compression_metrics(entropy, avg_length)
 
     print(f"Archivo comprimido guardado como {compressed}")
+    # print(f"Entropía: {entropy:.4f}")
+    # print(f"Longitud media del código: {avg_length:.4f}")
     print(f"Rendimiento: {efficiency:.4f}%")
     print(f"Redundancia: {redundancy:.4f}%")
     print(f"Tasa de compresión: {compression_ratio:.2f}%")  # Imprimir la tasa de compresión
@@ -145,7 +160,18 @@ def decompress_file(original, compressed):
             # Leer las frecuencias de los caracteres
             for _ in range(num_bytes):
                 byte = f_in.read(1)[0]  # Leer el byte
-                freq = int.from_bytes(f_in.read(4), 'big')  # Leer la frecuencia (4 bytes)
+                length = f_in.read(1)[0]  # Leer la longitud de codificación (1 byte)
+                
+                # Leer la frecuencia dependiendo de la longitud de codificación
+                if length == 1:
+                    freq = int.from_bytes(f_in.read(1), 'big')  # Frecuencia en 1 byte
+                elif length == 2:
+                    freq = int.from_bytes(f_in.read(2), 'big')  # Frecuencia en 2 bytes
+                elif length == 3:
+                    freq = int.from_bytes(f_in.read(3), 'big')  # Frecuencia en 3 bytes
+                else:
+                    freq = int.from_bytes(f_in.read(4), 'big')  # Frecuencia en 4 bytes
+                
                 frequencies[byte] = freq
 
             # Reconstruir el árbol de Huffman
@@ -174,30 +200,7 @@ def decompress_file(original, compressed):
         with open(original, 'wb') as f_out:
             f_out.write(decoded_data)
 
-        # Tamaños para métricas
-        total_symbols = sum(frequencies.values())  # Total de símbolos en el archivo original
-        compressed_size = os.path.getsize(compressed)  # Tamaño del archivo comprimido en bytes
-        decompressed_size = os.path.getsize(original)  # Tamaño del archivo descomprimido
-
-        # Calcular la tasa de compresión
-        compression_ratio = (compressed_size / decompressed_size) * 100
-
-        # Calcular la entropía
-        entropy = calculate_entropy(frequencies, total_symbols)
-
-        # Generar códigos de Huffman para los cálculos de longitud media
-        huffman_codes = generate_codes(huffman_tree)
-
-        # Calcular la longitud media del código
-        avg_length = calculate_average_length(huffman_codes, frequencies, total_symbols)
-
-        # Calcular el rendimiento y la redundancia
-        efficiency, redundancy = calculate_compression_metrics(entropy, avg_length)
-
         print(f"Archivo descomprimido guardado como {original}")
-        print(f"Rendimiento: {efficiency:.4f}%")
-        print(f"Redundancia: {redundancy:.4f}%")
-        print(f"Tasa de compresión (al descomprimir): {compression_ratio:.2f}%")
 
     except FileNotFoundError:
         print(f"Error: El archivo comprimido '{compressed}' no fue encontrado.")
