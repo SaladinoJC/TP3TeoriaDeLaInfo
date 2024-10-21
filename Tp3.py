@@ -3,6 +3,7 @@ import heapq
 import time
 from collections import Counter
 import math
+import os
 
 class Node:
     def __init__(self, byte=None, freq=None, left=None, right=None):
@@ -99,10 +100,10 @@ def compress_file(original, compressed):
     # Guardar el archivo comprimido
     with open(compressed, 'wb') as f_out:
         # Guardar las frecuencias de los bytes
-        f_out.write(len(frequencies).to_bytes(2, 'big'))  # Cantidad de bytes distintos, ahora con 2 bytes
+        f_out.write(len(frequencies).to_bytes(2, 'big'))  # Cantidad de bytes distintos
         for byte, freq in frequencies.items():
             f_out.write(bytes([byte]))  # Byte
-            f_out.write(freq.to_bytes(4, 'big'))  # Frecuencia (4 bytes para números grandes)
+            f_out.write(freq.to_bytes(4, 'big'))  # Frecuencia
 
         # Guardar el número de bits de relleno
         f_out.write(bytes([padding]))
@@ -113,7 +114,11 @@ def compress_file(original, compressed):
 
     # Tamaños para métricas
     total_symbols = len(data)  # Cantidad total de símbolos
-    original_size = total_symbols  # Tamaño original en bytes
+    original_size = os.path.getsize(original)  # Tamaño original en bytes
+    compressed_size = os.path.getsize(compressed)  # Tamaño del archivo comprimido en bytes
+
+    # Calcular la tasa de compresión
+    compression_ratio = (compressed_size / original_size) * 100
 
     # Calcular la entropía
     entropy = calculate_entropy(frequencies, total_symbols)
@@ -125,10 +130,9 @@ def compress_file(original, compressed):
     efficiency, redundancy = calculate_compression_metrics(entropy, avg_length)
 
     print(f"Archivo comprimido guardado como {compressed}")
-    print(f"Entropía: {entropy:.4f}")
-    print(f"Longitud media del código: {avg_length:.4f}")
     print(f"Rendimiento: {efficiency:.4f}%")
     print(f"Redundancia: {redundancy:.4f}%")
+    print(f"Tasa de compresión: {compression_ratio:.2f}%")  # Imprimir la tasa de compresión
 
 def decompress_file(original, compressed):
     try:
@@ -170,7 +174,30 @@ def decompress_file(original, compressed):
         with open(original, 'wb') as f_out:
             f_out.write(decoded_data)
 
+        # Tamaños para métricas
+        total_symbols = sum(frequencies.values())  # Total de símbolos en el archivo original
+        compressed_size = os.path.getsize(compressed)  # Tamaño del archivo comprimido en bytes
+        decompressed_size = os.path.getsize(original)  # Tamaño del archivo descomprimido
+
+        # Calcular la tasa de compresión
+        compression_ratio = (compressed_size / decompressed_size) * 100
+
+        # Calcular la entropía
+        entropy = calculate_entropy(frequencies, total_symbols)
+
+        # Generar códigos de Huffman para los cálculos de longitud media
+        huffman_codes = generate_codes(huffman_tree)
+
+        # Calcular la longitud media del código
+        avg_length = calculate_average_length(huffman_codes, frequencies, total_symbols)
+
+        # Calcular el rendimiento y la redundancia
+        efficiency, redundancy = calculate_compression_metrics(entropy, avg_length)
+
         print(f"Archivo descomprimido guardado como {original}")
+        print(f"Rendimiento: {efficiency:.4f}%")
+        print(f"Redundancia: {redundancy:.4f}%")
+        print(f"Tasa de compresión (al descomprimir): {compression_ratio:.2f}%")
 
     except FileNotFoundError:
         print(f"Error: El archivo comprimido '{compressed}' no fue encontrado.")
